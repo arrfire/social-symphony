@@ -92,6 +92,7 @@ const SocialMediaPoster = () => {
       localStorage.setItem('twitter_code_verifier', codeVerifier);
 
       const authUrl = `${TWITTER_AUTH_URL}?response_type=code&client_id=${TWITTER_CLIENT_ID}&redirect_uri=${encodeURIComponent(TWITTER_REDIRECT_URI)}&scope=${encodeURIComponent(TWITTER_SCOPE)}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
+      console.log('Twitter Auth URL:', authUrl); // Add this line for debugging
       window.location.href = authUrl;
     } else {
       setLoadingPlatforms(prev => ({ ...prev, [platform]: true }));
