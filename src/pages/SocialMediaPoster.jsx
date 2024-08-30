@@ -6,6 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { TWITTER_AUTH_URL, TWITTER_CLIENT_ID, TWITTER_REDIRECT_URI, TWITTER_SCOPE } from '../config/twitterAuth';
 
 const SocialMediaPoster = () => {
   const [connectedAccounts, setConnectedAccounts] = useState({
@@ -23,20 +31,35 @@ const SocialMediaPoster = () => {
     lens: false,
   });
   const [postContent, setPostContent] = useState('');
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [twitterClientId, setTwitterClientId] = useState('');
+  const [twitterClientSecret, setTwitterClientSecret] = useState('');
 
   const handleConnect = async (platform) => {
-    setLoadingPlatforms(prev => ({ ...prev, [platform]: true }));
-    
-    // Simulate a connection process
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setConnectedAccounts(prev => ({ ...prev, [platform]: !prev[platform] }));
-    setLoadingPlatforms(prev => ({ ...prev, [platform]: false }));
+    if (platform === 'twitter') {
+      if (!twitterClientId || !twitterClientSecret) {
+        setShowCredentialsModal(true);
+        return;
+      }
+      const authUrl = `${TWITTER_AUTH_URL}?response_type=code&client_id=${twitterClientId}&redirect_uri=${TWITTER_REDIRECT_URI}&scope=${TWITTER_SCOPE}&state=state`;
+      window.location.href = authUrl;
+    } else {
+      setLoadingPlatforms(prev => ({ ...prev, [platform]: true }));
+      // Simulate a connection process for other platforms
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setConnectedAccounts(prev => ({ ...prev, [platform]: !prev[platform] }));
+      setLoadingPlatforms(prev => ({ ...prev, [platform]: false }));
+    }
   };
 
   const handlePost = () => {
     console.log('Posting to:', Object.entries(connectedAccounts).filter(([_, v]) => v).map(([k]) => k));
     console.log('Content:', postContent);
+  };
+
+  const handleCredentialsSubmit = () => {
+    setShowCredentialsModal(false);
+    handleConnect('twitter');
   };
 
   return (
@@ -89,6 +112,40 @@ const SocialMediaPoster = () => {
           </Button>
         </CardContent>
       </Card>
+
+      <Dialog open={showCredentialsModal} onOpenChange={setShowCredentialsModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enter Twitter OAuth Credentials</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="clientId" className="text-right">
+                Client ID
+              </Label>
+              <Input
+                id="clientId"
+                value={twitterClientId}
+                onChange={(e) => setTwitterClientId(e.target.value)}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="clientSecret" className="text-right">
+                Client Secret
+              </Label>
+              <Input
+                id="clientSecret"
+                type="password"
+                value={twitterClientSecret}
+                onChange={(e) => setTwitterClientSecret(e.target.value)}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <Button onClick={handleCredentialsSubmit}>Connect Twitter</Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
