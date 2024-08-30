@@ -1,18 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { TWITTER_AUTH_URL, TWITTER_TOKEN_URL, TWITTER_REDIRECT_URI, TWITTER_SCOPE, TWITTER_STATE } from '../config/twitterAuth';
+import { TWITTER_AUTH_URL, TWITTER_TOKEN_URL, TWITTER_REDIRECT_URI, TWITTER_SCOPE, TWITTER_STATE, TWITTER_CLIENT_ID } from '../config/twitterAuth';
 import { useLocation } from 'react-router-dom';
 
 const SocialMediaPoster = () => {
@@ -31,9 +24,6 @@ const SocialMediaPoster = () => {
     lens: false,
   });
   const [postContent, setPostContent] = useState('');
-  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
-  const [twitterClientId, setTwitterClientId] = useState('');
-  const [twitterClientSecret, setTwitterClientSecret] = useState('');
   const location = useLocation();
 
   useEffect(() => {
@@ -52,12 +42,12 @@ const SocialMediaPoster = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': `Basic ${btoa(`${twitterClientId}:${twitterClientSecret}`)}`,
         },
         body: new URLSearchParams({
           grant_type: 'authorization_code',
           code,
           redirect_uri: TWITTER_REDIRECT_URI,
+          client_id: TWITTER_CLIENT_ID,
           code_verifier: 'challenge', // This should be the same value used when requesting the authorization code
         }),
       });
@@ -77,11 +67,7 @@ const SocialMediaPoster = () => {
 
   const handleConnect = async (platform) => {
     if (platform === 'twitter') {
-      if (!twitterClientId || !twitterClientSecret) {
-        setShowCredentialsModal(true);
-        return;
-      }
-      const authUrl = `${TWITTER_AUTH_URL}?response_type=code&client_id=${twitterClientId}&redirect_uri=${TWITTER_REDIRECT_URI}&scope=${TWITTER_SCOPE}&state=${TWITTER_STATE}&code_challenge=challenge&code_challenge_method=plain`;
+      const authUrl = `${TWITTER_AUTH_URL}?response_type=code&client_id=${TWITTER_CLIENT_ID}&redirect_uri=${TWITTER_REDIRECT_URI}&scope=${TWITTER_SCOPE}&state=${TWITTER_STATE}&code_challenge=challenge&code_challenge_method=plain`;
       window.location.href = authUrl;
     } else {
       setLoadingPlatforms(prev => ({ ...prev, [platform]: true }));
@@ -95,11 +81,6 @@ const SocialMediaPoster = () => {
   const handlePost = () => {
     console.log('Posting to:', Object.entries(connectedAccounts).filter(([_, v]) => v).map(([k]) => k));
     console.log('Content:', postContent);
-  };
-
-  const handleCredentialsSubmit = () => {
-    setShowCredentialsModal(false);
-    handleConnect('twitter');
   };
 
   return (
@@ -152,40 +133,6 @@ const SocialMediaPoster = () => {
           </Button>
         </CardContent>
       </Card>
-
-      <Dialog open={showCredentialsModal} onOpenChange={setShowCredentialsModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Enter Twitter OAuth Credentials</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="clientId" className="text-right">
-                Client ID
-              </Label>
-              <Input
-                id="clientId"
-                value={twitterClientId}
-                onChange={(e) => setTwitterClientId(e.target.value)}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="clientSecret" className="text-right">
-                Client Secret
-              </Label>
-              <Input
-                id="clientSecret"
-                type="password"
-                value={twitterClientSecret}
-                onChange={(e) => setTwitterClientSecret(e.target.value)}
-                className="col-span-3"
-              />
-            </div>
-          </div>
-          <Button onClick={handleCredentialsSubmit}>Connect Twitter</Button>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
