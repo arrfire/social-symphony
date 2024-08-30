@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { TWITTER_AUTH_URL, TWITTER_TOKEN_URL, TWITTER_REDIRECT_URI, TWITTER_SCOPE, TWITTER_STATE, TWITTER_CLIENT_ID, TWITTER_CLIENT_SECRET } from '../config/twitterAuth';
-import { useLocation } from 'react-router-dom';
+import { TWITTER_AUTH_URL, TWITTER_TOKEN_URL, TWITTER_REDIRECT_URI, TWITTER_SCOPE, TWITTER_STATE, TWITTER_CLIENT_ID, TWITTER_CLIENT_SECRET, TWITTER_CODE_CHALLENGE, TWITTER_CODE_CHALLENGE_METHOD } from '../config/twitterAuth';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { toast } from "@/components/ui/use-toast";
 
 const SocialMediaPoster = () => {
   const [connectedAccounts, setConnectedAccounts] = useState({
@@ -25,6 +26,7 @@ const SocialMediaPoster = () => {
   });
   const [postContent, setPostContent] = useState('');
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
@@ -38,37 +40,49 @@ const SocialMediaPoster = () => {
 
   const handleTwitterCallback = async (code) => {
     try {
+      setLoadingPlatforms(prev => ({ ...prev, twitter: true }));
       const response = await fetch(TWITTER_TOKEN_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': `Basic ${btoa(`${TWITTER_CLIENT_ID}:${TWITTER_CLIENT_SECRET}`)}`
         },
         body: new URLSearchParams({
           grant_type: 'authorization_code',
           code,
           redirect_uri: TWITTER_REDIRECT_URI,
-          client_id: TWITTER_CLIENT_ID,
-          client_secret: TWITTER_CLIENT_SECRET,
-          code_verifier: 'challenge', // This should be the same value used when requesting the authorization code
+          code_verifier: TWITTER_CODE_CHALLENGE,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to obtain access token');
+        const errorData = await response.json();
+        throw new Error(`Failed to obtain access token: ${errorData.error_description || 'Unknown error'}`);
       }
 
       const data = await response.json();
-      // Store the access token securely (e.g., in state or localStorage)
-      console.log('Access token:', data.access_token);
+      localStorage.setItem('twitter_access_token', data.access_token);
       setConnectedAccounts(prev => ({ ...prev, twitter: true }));
+      toast({
+        title: "Twitter Connected",
+        description: "Your Twitter account has been successfully connected.",
+      });
     } catch (error) {
       console.error('Error during Twitter authentication:', error);
+      toast({
+        title: "Connection Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingPlatforms(prev => ({ ...prev, twitter: false }));
+      navigate('/social-media-poster', { replace: true });
     }
   };
 
   const handleConnect = async (platform) => {
     if (platform === 'twitter') {
-      const authUrl = `${TWITTER_AUTH_URL}?response_type=code&client_id=${TWITTER_CLIENT_ID}&redirect_uri=${TWITTER_REDIRECT_URI}&scope=${TWITTER_SCOPE}&state=${TWITTER_STATE}&code_challenge=challenge&code_challenge_method=plain`;
+      const authUrl = `${TWITTER_AUTH_URL}?response_type=code&client_id=${TWITTER_CLIENT_ID}&redirect_uri=${encodeURIComponent(TWITTER_REDIRECT_URI)}&scope=${encodeURIComponent(TWITTER_SCOPE)}&state=${TWITTER_STATE}&code_challenge=${TWITTER_CODE_CHALLENGE}&code_challenge_method=${TWITTER_CODE_CHALLENGE_METHOD}`;
       window.location.href = authUrl;
     } else {
       setLoadingPlatforms(prev => ({ ...prev, [platform]: true }));
