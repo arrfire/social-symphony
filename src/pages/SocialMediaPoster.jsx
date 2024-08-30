@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,9 +11,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { TWITTER_AUTH_URL, TWITTER_CLIENT_ID, TWITTER_REDIRECT_URI, TWITTER_SCOPE } from '../config/twitterAuth';
+import { TWITTER_AUTH_URL, TWITTER_TOKEN_URL, TWITTER_REDIRECT_URI, TWITTER_SCOPE, TWITTER_STATE } from '../config/twitterAuth';
+import { useLocation } from 'react-router-dom';
 
 const SocialMediaPoster = () => {
   const [connectedAccounts, setConnectedAccounts] = useState({
@@ -34,6 +34,46 @@ const SocialMediaPoster = () => {
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [twitterClientId, setTwitterClientId] = useState('');
   const [twitterClientSecret, setTwitterClientSecret] = useState('');
+  const location = useLocation();
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+
+    if (code && state === TWITTER_STATE) {
+      handleTwitterCallback(code);
+    }
+  }, [location]);
+
+  const handleTwitterCallback = async (code) => {
+    try {
+      const response = await fetch(TWITTER_TOKEN_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': `Basic ${btoa(`${twitterClientId}:${twitterClientSecret}`)}`,
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: TWITTER_REDIRECT_URI,
+          code_verifier: 'challenge', // This should be the same value used when requesting the authorization code
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to obtain access token');
+      }
+
+      const data = await response.json();
+      // Store the access token securely (e.g., in state or localStorage)
+      console.log('Access token:', data.access_token);
+      setConnectedAccounts(prev => ({ ...prev, twitter: true }));
+    } catch (error) {
+      console.error('Error during Twitter authentication:', error);
+    }
+  };
 
   const handleConnect = async (platform) => {
     if (platform === 'twitter') {
@@ -41,7 +81,7 @@ const SocialMediaPoster = () => {
         setShowCredentialsModal(true);
         return;
       }
-      const authUrl = `${TWITTER_AUTH_URL}?response_type=code&client_id=${twitterClientId}&redirect_uri=${TWITTER_REDIRECT_URI}&scope=${TWITTER_SCOPE}&state=state`;
+      const authUrl = `${TWITTER_AUTH_URL}?response_type=code&client_id=${twitterClientId}&redirect_uri=${TWITTER_REDIRECT_URI}&scope=${TWITTER_SCOPE}&state=${TWITTER_STATE}&code_challenge=challenge&code_challenge_method=plain`;
       window.location.href = authUrl;
     } else {
       setLoadingPlatforms(prev => ({ ...prev, [platform]: true }));
