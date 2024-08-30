@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { TWITTER_AUTH_URL, TWITTER_TOKEN_URL, TWITTER_REDIRECT_URI, TWITTER_SCOPE, TWITTER_STATE, TWITTER_CLIENT_ID, TWITTER_CLIENT_SECRET, TWITTER_CODE_CHALLENGE, TWITTER_CODE_CHALLENGE_METHOD } from '../config/twitterAuth';
+import { TWITTER_AUTH_URL, TWITTER_TOKEN_URL, TWITTER_REDIRECT_URI, TWITTER_SCOPE, TWITTER_CLIENT_ID, TWITTER_CLIENT_SECRET, generateTwitterState, generateCodeVerifier, generateCodeChallenge } from '../config/twitterAuth';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from "@/components/ui/use-toast";
 
@@ -32,8 +32,9 @@ const SocialMediaPoster = () => {
     const urlParams = new URLSearchParams(location.search);
     const code = urlParams.get('code');
     const state = urlParams.get('state');
+    const storedState = localStorage.getItem('twitter_state');
 
-    if (code && state === TWITTER_STATE) {
+    if (code && state === storedState) {
       handleTwitterCallback(code);
     }
   }, [location]);
@@ -41,6 +42,7 @@ const SocialMediaPoster = () => {
   const handleTwitterCallback = async (code) => {
     try {
       setLoadingPlatforms(prev => ({ ...prev, twitter: true }));
+      const codeVerifier = localStorage.getItem('twitter_code_verifier');
       const response = await fetch(TWITTER_TOKEN_URL, {
         method: 'POST',
         headers: {
@@ -51,7 +53,7 @@ const SocialMediaPoster = () => {
           grant_type: 'authorization_code',
           code,
           redirect_uri: TWITTER_REDIRECT_URI,
-          code_verifier: TWITTER_CODE_CHALLENGE,
+          code_verifier: codeVerifier,
         }),
       });
 
@@ -82,7 +84,14 @@ const SocialMediaPoster = () => {
 
   const handleConnect = async (platform) => {
     if (platform === 'twitter') {
-      const authUrl = `${TWITTER_AUTH_URL}?response_type=code&client_id=${TWITTER_CLIENT_ID}&redirect_uri=${encodeURIComponent(TWITTER_REDIRECT_URI)}&scope=${encodeURIComponent(TWITTER_SCOPE)}&state=${TWITTER_STATE}&code_challenge=${TWITTER_CODE_CHALLENGE}&code_challenge_method=${TWITTER_CODE_CHALLENGE_METHOD}`;
+      const state = generateTwitterState();
+      const codeVerifier = generateCodeVerifier();
+      const codeChallenge = await generateCodeChallenge(codeVerifier);
+      
+      localStorage.setItem('twitter_state', state);
+      localStorage.setItem('twitter_code_verifier', codeVerifier);
+
+      const authUrl = `${TWITTER_AUTH_URL}?response_type=code&client_id=${TWITTER_CLIENT_ID}&redirect_uri=${encodeURIComponent(TWITTER_REDIRECT_URI)}&scope=${encodeURIComponent(TWITTER_SCOPE)}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
       window.location.href = authUrl;
     } else {
       setLoadingPlatforms(prev => ({ ...prev, [platform]: true }));
