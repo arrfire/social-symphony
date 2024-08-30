@@ -37,6 +37,12 @@ const SocialMediaPoster = () => {
     if (code && state === storedState) {
       handleTwitterCallback(code);
     }
+
+    // Check if Twitter is already connected
+    const twitterAccessToken = localStorage.getItem('twitter_access_token');
+    if (twitterAccessToken) {
+      setConnectedAccounts(prev => ({ ...prev, twitter: true }));
+    }
   }, [location]);
 
   const handleTwitterCallback = async (code) => {
@@ -92,7 +98,6 @@ const SocialMediaPoster = () => {
       localStorage.setItem('twitter_code_verifier', codeVerifier);
 
       const authUrl = `${TWITTER_AUTH_URL}?response_type=code&client_id=${TWITTER_CLIENT_ID}&redirect_uri=${encodeURIComponent(TWITTER_REDIRECT_URI)}&scope=${encodeURIComponent(TWITTER_SCOPE)}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
-      console.log('Twitter Auth URL:', authUrl); // Add this line for debugging
       window.location.href = authUrl;
     } else {
       setLoadingPlatforms(prev => ({ ...prev, [platform]: true }));
@@ -103,7 +108,38 @@ const SocialMediaPoster = () => {
     }
   };
 
-  const handlePost = () => {
+  const handlePost = async () => {
+    if (connectedAccounts.twitter) {
+      try {
+        const accessToken = localStorage.getItem('twitter_access_token');
+        const response = await fetch('https://api.twitter.com/2/tweets', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ text: postContent }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to post tweet');
+        }
+
+        toast({
+          title: "Tweet Posted",
+          description: "Your tweet has been successfully posted.",
+        });
+      } catch (error) {
+        console.error('Error posting tweet:', error);
+        toast({
+          title: "Posting Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    }
+
+    // Log posting to other platforms (to be implemented)
     console.log('Posting to:', Object.entries(connectedAccounts).filter(([_, v]) => v).map(([k]) => k));
     console.log('Content:', postContent);
   };
