@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { TWITTER_AUTH_URL, TWITTER_TOKEN_URL, TWITTER_REDIRECT_URI, TWITTER_SCOPE, TWITTER_STATE, TWITTER_CLIENT_ID } from '../config/twitterAuth';
+import { TWITTER_AUTH_URL, TWITTER_TOKEN_URL, TWITTER_REDIRECT_URI, TWITTER_SCOPE, TWITTER_STATE, TWITTER_CLIENT_ID, TWITTER_CLIENT_SECRET } from '../config/twitterAuth';
 import { useLocation } from 'react-router-dom';
 
 const SocialMediaPoster = () => {
@@ -48,6 +48,7 @@ const SocialMediaPoster = () => {
           code,
           redirect_uri: TWITTER_REDIRECT_URI,
           client_id: TWITTER_CLIENT_ID,
+          client_secret: TWITTER_CLIENT_SECRET,
           code_verifier: 'challenge', // This should be the same value used when requesting the authorization code
         }),
       });
